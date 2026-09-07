@@ -54,6 +54,8 @@ async def update_map_status():
 
 def make_app():
     quart_app = Quart(__name__)
+    # Android posts to URLs without trailing slashes; avoid proxy redirects.
+    quart_app.url_map.strict_slashes = False
     QuartSchema(quart_app)
     routes = handlers.load_blueprints()
     for route in routes:

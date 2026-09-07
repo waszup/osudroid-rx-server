@@ -29,7 +29,7 @@ def check(condition, message):
 
 
 def post(path, **kwargs):
-    response = requests.post(BASE + path, timeout=30, **kwargs)
+    response = requests.post(BASE + path, timeout=30, allow_redirects=False, **kwargs)
     check(response.status_code == 200, path + " HTTP 200")
     return response
 
@@ -72,7 +72,7 @@ def main():
         wire_password = hashlib.md5((password + "taikotaiko").encode()).hexdigest()
         invalid = post("/api/login.php/", data={"username": username, "password": "wrong", "version": "9"})
         check(invalid.text.startswith("FAILED"), "Incorrect password rejected")
-        login = post("/api/login.php/", data={"username": username, "password": wire_password, "version": "9"})
+        login = post("/api/login.php", data={"username": username, "password": wire_password, "version": "9"})
         check(login.text.startswith("SUCCESS\n"), "Game protocol 9 login succeeds")
         fields = login.text.splitlines()[1].split()
         uid, ssid = fields[0], fields[1]
