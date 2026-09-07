@@ -140,7 +140,7 @@ class Player:
         if user_data["email_hash"] is None and user_data["email"] is not None:
             email_hash = utils.make_md5(user_data["email"])
             await glob.db.execute(
-                "UPDATE users SET email_hash = ? WHERE id = ?", [email_hash, user_id]
+                "UPDATE users SET email_hash = $1 WHERE id = $2", [email_hash, user_id]
             )
             user_data["email_hash"] = email_hash
 

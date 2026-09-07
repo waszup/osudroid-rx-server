@@ -21,14 +21,16 @@ async def submit_play():
     if "userID" not in params:
         return Failed("Not enough argument.")
 
-    player: Player = glob.players.get(id=int(params["userID"]))
-    player.last_online = time.time()
+    try:
+        player_id = int(params["userID"])
+    except (ValueError, TypeError):
+        return Failed("Invalid player ID.")
+    player: Player = glob.players.get(id=player_id)
     if not player:
         return Failed("Player not found, report to server admin.")
-
-    if "ssid" in params:
-        if params["ssid"] != player.uuid:
-            return Failed("Server restart, please relogin.")
+    if not player.uuid or params.get("ssid") != player.uuid:
+        return Failed("Invalid session, please relogin.")
+    player.last_online = time.time()
 
     if glob.config.disable_submit:
         return Failed("Score submission is disable right now.")
@@ -40,7 +42,23 @@ async def submit_play():
             return Success(1, player.id)
 
     if play_data := params.get("data"):
-        score: Score = await Score.from_submission(play_data)
+        fields = play_data.split(" ")
+        username_index = 13 if glob.config.legacy else 15
+        if len(fields) <= username_index or fields[username_index] != player.username:
+            return Failed("Score does not belong to this session.")
+        if not glob.config.legacy:
+            files = await request.files
+            replay = files.get("replayFile")
+            if replay is None:
+                return Failed("Replay missing.")
+            raw_replay = replay.read()
+            if len(raw_replay) > 10 * 1024 * 1024 or not raw_replay.startswith(b"PK"):
+                return Failed("Invalid replay.")
+            replay.seek(0)
+        try:
+            score: Score = await Score.from_submission(play_data)
+        except (ValueError, TypeError, IndexError):
+            return Failed("Invalid score data.")
         if not score:
             return Failed("Failed to read score data.")
 

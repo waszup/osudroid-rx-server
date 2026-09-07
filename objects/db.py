@@ -134,7 +134,7 @@ class PostgresDB:
         # Get the database URL from the environment variable
         database_url = os.getenv("DATABASE_URL")
         self.pool = await asyncpg.create_pool(database_url)
-        logging.debug(f"Database connected to: {database_url}")
+        logging.debug("Database connected")
         await self.check_database()
 
     async def close(self):
@@ -146,7 +146,7 @@ class PostgresDB:
             async with connection.transaction():
                 if "INSERT" in query.upper() and "RETURNING" not in query.upper():
                     query += " RETURNING id"
-                logging.debug(f"Executing query: {query} with params: {params}")
+                logging.debug(f"Executing query: {query}")
                 result = await connection.fetchval(query, *params)
         return result
 
@@ -156,7 +156,7 @@ class PostgresDB:
                 result = await connection.fetch(query, *params)
             else:
                 result = await connection.fetchrow(query, *params)
-            logging.debug(f"Fetching query: {query} with params: {params}")
+            logging.debug(f"Fetching query: {query}")
             if not result:
                 return None
             return (

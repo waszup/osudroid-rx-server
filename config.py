@@ -2,25 +2,25 @@ import os
 from dotenv import load_dotenv
 import json
 
-load_dotenv(override=True)
+load_dotenv(override=False)
 
 # Main server configuration
-server_name = "osudroid!relax"
+server_name = os.getenv("SERVER_NAME", "waszup osu!droid RX")
 server_description = (
     "Server that aims to be a relax mod only version of osu!droid, for those people that like to play RX and wish it were ranked."
 )
-port = int(os.getenv("SERVER_PORT", 8080))
-ip = os.getenv("SERVER_IP")
+port = int(os.getenv("PORT", os.getenv("SERVER_PORT", "8080")))
+ip = os.getenv("SERVER_IP", "127.0.0.1")
 domain = os.getenv("SERVER_DOMAIN")
-host = ""  # Internal use only
+host = os.getenv("PUBLIC_URL", "").rstrip("/")
 
 # Client configuration
 online_version = 9
-client_link = "https://github.com/unclem2/odrx-client/releases/download/1.16.3/osu.droid-1.16.3.250829.-debug-2025-08-29.apk"
-client_version = "1.16.3(250829)"
-client_version_code = 1756470004
-client_changelog = "spectator support"
-banner_url = "https://discord.gg/Ub4nXasaHd"
+client_link = os.getenv("CLIENT_DOWNLOAD_URL", "https://github.com/waszup/odrx-client/actions/workflows/build-private-apk.yml")
+client_version = os.getenv("CLIENT_VERSION", "waszup RX test")
+client_version_code = int(os.getenv("CLIENT_VERSION_CODE", "0"))
+client_changelog = os.getenv("CLIENT_CHANGELOG", "Private waszup server; protocol 9")
+banner_url = os.getenv("BANNER_URL", "https://github.com/waszup/odrx-client")
 
 # State toggles
 legacy = False  # Enable to use legacy submit system

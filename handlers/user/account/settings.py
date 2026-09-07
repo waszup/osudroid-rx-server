@@ -1,4 +1,4 @@
-from glob import glob
+from objects import glob
 from quart import Blueprint, request, render_template
 import utils
 

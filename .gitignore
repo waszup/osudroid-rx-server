@@ -150,7 +150,8 @@ fulldump.sql
 utils/tets.c
 utils/setup.py
 GeoLite2-Country.mmdb
-tests
+# Integration tests are versioned
+work/
 .vscode/settings.json
 coloredlogs
 config.json

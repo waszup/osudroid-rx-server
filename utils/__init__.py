@@ -19,14 +19,17 @@ def make_uuid(username: str = ""):
 
 
 def check_folder():
-    required_folders = ["replays", "beatmaps"]
+    from pathlib import Path
+    import shutil
 
-    if not os.path.isdir("data"):
-        os.mkdir("data")
-
-    for folder in required_folders:
-        if not os.path.isdir(f"/srv/odrx_storage/{folder}"):
-            os.mkdir(f"/srv/odrx_storage/{folder}")
+    for folder in ("replays", "beatmaps", "avatar", "banner", "rooms"):
+        target = Path("/srv/odrx_storage") / folder
+        target.mkdir(parents=True, exist_ok=True)
+    for folder in ("avatar", "banner"):
+        source = Path(__file__).resolve().parent.parent / "data" / folder / "default.png"
+        target = Path("/srv/odrx_storage") / folder / "default.png"
+        if source.is_file() and not target.exists():
+            shutil.copyfile(source, target)
 
 
 def check_md5(n: str, md5: str):
@@ -36,6 +39,8 @@ def check_md5(n: str, md5: str):
 async def send_webhook(
     url, content, isEmbed=False, title=None, title_url=None, thumbnail=None, footer=None
 ):
+    if not url:
+        return
     webhook = discord_webhook.AsyncDiscordWebhook(url=url)
     if isEmbed is not False:
         embed = discord_webhook.DiscordEmbed(title=title, description=content)

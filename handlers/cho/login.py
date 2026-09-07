@@ -26,7 +26,13 @@ async def login():
 
     if not p:
         return Failed("User not found.")
-    if int(params["version"]) != int(glob.config.online_version):
+    if not params.get("password"):
+        return Failed("Password missing.")
+    try:
+        version = int(params.get("version", ""))
+    except (ValueError, TypeError):
+        return Failed("Invalid client version.")
+    if version != int(glob.config.online_version):
         return Failed("This client is outdated")
 
     if glob.config.maintenance == True:

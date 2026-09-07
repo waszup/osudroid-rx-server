@@ -16,7 +16,7 @@ def load_blueprints():
                 continue
 
             path = os.path.join(root, file)[:-3]
-            import_path = path.replace("/", ".")
+            import_path = path.replace(os.sep, ".")
 
             try:
                 module = importlib.import_module(import_path)
@@ -34,7 +34,7 @@ def load_blueprints():
                             if callable(args.cell_contents):
                                 args.cell_contents = hide(args.cell_contents)
                                     
-                blueprint.prefix = path.replace(base_dir, "").replace("cho", "api")
+                blueprint.prefix = path.replace(os.sep, "/").replace(base_dir, "").replace("cho", "api")
                 if hasattr(module, "php_file"):
                     blueprint.prefix += ".php"
                 if hasattr(module, "forced_route"):

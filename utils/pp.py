@@ -130,37 +130,37 @@ class PPCalculator:
         )
 
         beatmap_attrs = osu_pp.BeatmapAttributesBuilder(
-            mods=submit_mods,
-            map=beatmap
+            mods=submit_mods
         )
+        beatmap_attrs.set_map(beatmap)
 
         if applied != True and speed_multiplier != 1:
             performance.set_clock_rate(speed_multiplier)
             beatmap_attrs.set_clock_rate(speed_multiplier)
 
-        performance.set_od(original_od, od_with_mods=False)
-        beatmap_attrs.set_od(original_od, od_with_mods=False)
+        performance.set_od(original_od, fixed=False)
+        beatmap_attrs.set_od(original_od, fixed=False)
         
         for i, mod in enumerate(mods.as_calculable_mods):
             if mod["acronym"] == "PR":
                 original_od += 4
-                performance.set_od(original_od, od_with_mods=False)
-                beatmap_attrs.set_od(original_od, od_with_mods=False)
+                performance.set_od(original_od, fixed=False)
+                beatmap_attrs.set_od(original_od, fixed=False)
             if mod["acronym"] == "RE":
                 original_od = original_od / 2
                 cs *= 0.5
-                performance.set_ar(beatmap.ar - 0.5, ar_with_mods=True)
-                performance.set_od(original_od, od_with_mods=False)
-                performance.set_cs(cs, cs_with_mods=False)
+                performance.set_ar(beatmap.ar - 0.5, fixed=True)
+                performance.set_od(original_od, fixed=False)
+                performance.set_cs(cs, fixed=False)
 
-                beatmap_attrs.set_ar(beatmap.ar - 0.5, ar_with_mods=True)
-                beatmap_attrs.set_od(original_od, od_with_mods=False)
-                beatmap_attrs.set_cs(cs, cs_with_mods=False)
+                beatmap_attrs.set_ar(beatmap.ar - 0.5, fixed=True)
+                beatmap_attrs.set_od(original_od, fixed=False)
+                beatmap_attrs.set_cs(cs, fixed=False)
 
         
 
         # cs = droid_cs_to_standard_cs(cs)
-        # performance.set_cs(cs, cs_with_mods=False)
+        # performance.set_cs(cs, fixed=False)
 
         if api == True:
             performance.set_accuracy(self.acc)

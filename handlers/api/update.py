@@ -1,4 +1,4 @@
-from quart import Blueprint
+from quart import Blueprint, jsonify
 from objects import glob
 
 bp = Blueprint("update", __name__)
@@ -14,4 +14,4 @@ async def send_update():
         "changelog": glob.config.client_changelog,
     }
 
-    return f"{data}"
+    return jsonify(data)

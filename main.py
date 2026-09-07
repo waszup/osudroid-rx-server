@@ -67,11 +67,13 @@ app = make_app()
 def handle_ex(loop, context):
     logging.debug("SSL error ignored: ")
     logging.debug(f"{context['message']}")
-    logging.debug(context["exception"])
+    logging.debug(context.get("exception"))
 
 
 @app.before_serving
 async def init():
+    if not glob.config.login_key or not glob.config.wl_key:
+        raise RuntimeError("LOGIN_KEY and WL_KEY must be configured")
     utils.check_folder()
     await glob.db.connect()
     glob.task_manager = TaskManager()
@@ -141,9 +143,15 @@ async def index():
     )
 
 
+@app.route("/healthz")
+async def healthz():
+    await glob.db.fetch("SELECT 1 AS ok")
+    return jsonify({"status": "ok"})
+
+
 def main():
     hypercorn_config = hypercorn.Config()
-    coloredlogs.install(level=logging.DEBUG)
+    coloredlogs.install(level=logging.INFO)
 
     if os.path.exists(f"/etc/letsencrypt/live/{glob.config.domain}"):
         redirected_app = HTTPToHTTPSRedirectMiddleware(app, host=glob.config.domain)
@@ -157,13 +165,13 @@ def main():
         hypercorn_config.certfile = os.path.join(
             f"/etc/letsencrypt/live/{glob.config.domain}/fullchain.pem"
         )
-        glob.config.host = f"https://{glob.config.domain}:443"
+        glob.config.host = glob.config.host or f"https://{glob.config.domain}:443"
     else:
         app_asgi = ASGIApp(sio, app)
         hypercorn_config.bind = [f"{glob.config.ip}:{glob.config.port}"]
-        glob.config.host = f"http://{glob.config.ip}:{glob.config.port}"
-        hypercorn_config.debug = True
-        hypercorn_config.loglevel = "DEBUG"
+        glob.config.host = glob.config.host or f"http://{glob.config.ip}:{glob.config.port}"
+        hypercorn_config.debug = False
+        hypercorn_config.loglevel = "INFO"
         hypercorn_config.accesslog = "-"
         hypercorn_config.errorlog = "-"
     asyncio.run(hypercorn.asyncio.serve(app_asgi, hypercorn_config))

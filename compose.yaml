@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_DB: odrx
+      POSTGRES_USER: odrx
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run prepare_local.py first}
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odrx -d odrx"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  server:
+    build: .
+    env_file: .env
+    environment:
+      SERVER_IP: 0.0.0.0
+      DATABASE_URL: postgresql://odrx:${POSTGRES_PASSWORD}@db:5432/odrx
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - storage:/srv/odrx_storage
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  database:
+  storage:
