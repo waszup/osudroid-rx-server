@@ -81,6 +81,14 @@ def main():
             check(post("/api/submit.php/", data=data).text.startswith("FAILED"), "Invalid score session rejected")
         check(post("/api/upload.php/", data={"replayID": "../escape"}).text.startswith("FAILED"), "Unauthenticated replay upload rejected")
 
+        public_md5 = "233f55099932d0696a3ef192041bc30d"
+        public_map = requests.get(BASE + "/api/v2/md5/" + public_md5 + "/", timeout=30)
+        check(public_map.status_code == 200 and public_map.json().get("ranked") == 1, "Public beatmap lookup works without an osu API key")
+        public_info = requests.get(BASE + "/api/beatmap/", params={"bid": 75}, timeout=40)
+        check(public_info.status_code == 200, "Beatmap details and download succeed")
+        public_file = Path("/srv/odrx_storage/beatmaps/75.osu")
+        check(public_file.exists() and hashlib.md5(public_file.read_bytes()).hexdigest() == public_md5, "Downloaded public beatmap matches its checksum")
+
         beatmap = """osu file format v14
 
 [General]

@@ -1,4 +1,7 @@
 import aiohttp
+import asyncio
+import hashlib
+import re
 import logging
 from enum import IntEnum, unique
 from datetime import datetime
@@ -126,18 +129,28 @@ class Beatmap:
         if path.exists():
             return path
 
-        # Download the .osu file from bancho
-        url = f"https://old.ppy.sh/osu/{self.id}"
-        async with aiohttp.ClientSession() as sess:
-            async with sess.get(url) as res:
-                if not res or res.status != 200:
-                    return
-
-                content = await res.read()
-
-        # Write the content to path
-        path.write_bytes(content)
-        return path
+        urls = [f"https://old.ppy.sh/osu/{self.id}", f"https://osu.direct/api/osu/{self.id}/raw"]
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as sess:
+            for url in urls:
+                try:
+                    async with sess.get(url) as res:
+                        if res.status != 200:
+                            continue
+                        chunks = bytearray()
+                        async for chunk in res.content.iter_chunked(65536):
+                            chunks.extend(chunk)
+                            if len(chunks) > 2 * 1024 * 1024:
+                                break
+                        content = bytes(chunks)
+                        if len(content) > 2 * 1024 * 1024:
+                            continue
+                        if hashlib.md5(content).hexdigest() != self.md5:
+                            continue
+                        path.write_bytes(content)
+                        return path
+                except (aiohttp.ClientError, asyncio.TimeoutError):
+                    continue
+        return None
 
     @classmethod
     async def from_md5(cls, md5: str) -> Optional["Beatmap"]:
@@ -148,6 +161,9 @@ class Beatmap:
         Returns:
             Optional[Beatmap]: The beatmap object if found, otherwise None.
         """
+
+        if not re.fullmatch(r"[a-fA-F0-9]{32}", md5):
+            return None
 
         # # Return cached beatmap if it exists
         # if beatmap := glob.cache["beatmaps"].get(md5):
@@ -162,12 +178,7 @@ class Beatmap:
 
         # If not found in database, try to get it from osuapi
         if beatmap is None:
-            if len(glob.config.osu_key) < 32:
-                logging.info("Failed to get beatmap, invalid api key.")
-                return
-
             if not (beatmap := await cls.from_md5_osuapi(md5)):
-                glob.cache["unsubmitted"].append(md5)
                 return
 
         # Put the beatmap in the cache
@@ -185,10 +196,12 @@ class Beatmap:
         Returns:
             Optional[Beatmap]: The created Beatmap object if successful; None otherwise.
         """
-        url = "https://old.ppy.sh/api/get_beatmaps"
-        params = {"k": glob.config.osu_key, "h": md5}
+        url = "https://old.ppy.sh/api/get_beatmaps" if len(glob.config.osu_key) >= 32 else "https://osu.direct/api/get_beatmaps"
+        params = {"h": md5}
+        if len(glob.config.osu_key) >= 32:
+            params["k"] = glob.config.osu_key
 
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
             async with session.get(url, params=params) as response:
                 if response.status != 200:
                     return None
@@ -197,14 +210,14 @@ class Beatmap:
                 if not data:
                     return None
 
-        bmap = data[0]
+        bmap = next((item for item in data if item.get("file_md5") == md5), None)
+        if bmap is None:
+            return None
 
         # Create a Beatmap instance using API response
         beatmap = cls(**bmap)
         beatmap.md5 = md5
-        beatmap.last_update = datetime.strptime(
-            bmap["last_update"], "%Y-%m-%d %H:%M:%S"
-        )
+        beatmap.last_update = datetime.fromisoformat(bmap["last_update"].replace("Z", "+00:00"))
 
         # Save to local SQL database
         await beatmap.save_to_sql()
@@ -231,10 +244,6 @@ class Beatmap:
 
         # If not found in database, try to get it from osuapi
         if beatmap is None:
-            if len(glob.config.osu_key) < 32:
-                logging.info("Failed to get beatmap, invalid api key.")
-                return
-
             if not (beatmap := await cls.from_bid_osuapi(bid)):
                 return
         # Put the beatmap in the cache
@@ -253,10 +262,12 @@ class Beatmap:
         Returns:
             Optional[Beatmap]: The created Beatmap object if successful; None otherwise.
         """
-        url = "https://old.ppy.sh/api/get_beatmaps"
-        params = {"k": glob.config.osu_key, "b": bid}
+        url = "https://old.ppy.sh/api/get_beatmaps" if len(glob.config.osu_key) >= 32 else "https://osu.direct/api/get_beatmaps"
+        params = {"b": bid}
+        if len(glob.config.osu_key) >= 32:
+            params["k"] = glob.config.osu_key
 
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
             async with session.get(url, params=params) as response:
                 if response.status != 200:
                     return None
@@ -265,13 +276,13 @@ class Beatmap:
                 if not data:
                     return None
 
-        bmap = data[0]
+        bmap = next((item for item in data if int(item.get("beatmap_id", -1)) == bid), None)
+        if bmap is None:
+            return None
 
         # Create a Beatmap instance using API response
         beatmap = cls(**bmap)
-        beatmap.last_update = datetime.strptime(
-            bmap["last_update"], "%Y-%m-%d %H:%M:%S"
-        )
+        beatmap.last_update = datetime.fromisoformat(bmap["last_update"].replace("Z", "+00:00"))
 
         # Optionally save to database
         await beatmap.save_to_sql()
